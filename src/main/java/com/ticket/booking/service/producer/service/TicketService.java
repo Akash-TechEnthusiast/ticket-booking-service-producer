@@ -14,12 +14,15 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class TicketService {
     private final TicketBookingRepository repo;
-    private final KafkaTemplate<String, Object> kafka;
+    private final KafkaTemplate<String, TicketBookedEvent> kafka;
 
 
     @Transactional
     public TicketBooking bookTicket(TicketBooking booking) {
         booking.setStatus("PENDING");
+        if (booking.getPassengerName() == null || booking.getTrainId() == null) {
+            throw new IllegalArgumentException("PassengerName and TrainId are required");
+        }
         TicketBooking saved = repo.save(booking);
 
 
