@@ -10,6 +10,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.io.IOException;
+
 
 @RestController
 @RequestMapping("/tickets")
@@ -19,7 +21,7 @@ public class TicketController {
 
 
     @PostMapping
-    public ResponseEntity<TicketBooking> book(@RequestBody TicketBooking booking) {
+    public ResponseEntity<TicketBooking> book(@RequestBody TicketBooking booking) throws IOException {
         return ResponseEntity.ok(service.bookTicket(booking));
     }
 }

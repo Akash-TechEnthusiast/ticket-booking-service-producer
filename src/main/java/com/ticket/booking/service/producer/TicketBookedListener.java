@@ -1,8 +1,8 @@
 package com.ticket.booking.service.producer;
 
+import com.ticket.booking.service.producer.entity.OutboxEvent;
 import com.ticket.booking.service.producer.entity.TicketBookedEvent;
-import com.ticket.booking.service.producer.entity.TicketBooking;
-import com.ticket.booking.service.producer.repo.TicketBookingRepository;
+import com.ticket.booking.service.producer.repo.OutboxRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -14,15 +14,15 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class TicketBookedListener {
     // private final ProcessedTicketRepository repo;
-    private final TicketBookingRepository repo;
+    private final OutboxRepository repo;
     private final KafkaTemplate<String, TicketBookedEvent> kafka;
 
     @KafkaListener(topics = "ticket.confirmed", groupId = "ticket-confirmed")
     public void consume(TicketBookedEvent event) {
         System.out.println("Consumed booking: at producer side " + event);
-        Optional<TicketBooking> ticketbook = repo.findById(event.getBookingId());
-        if (ticketbook.isPresent()) {
-            TicketBooking booking = ticketbook.get();   // unwrap Optional
+        Optional<OutboxEvent> outboxEvent = repo.findByKeyvalue(String.valueOf(event.getBookingId()));
+        if (outboxEvent.isPresent()) {
+            OutboxEvent booking = outboxEvent.get();  // unwrap Optional
             booking.setStatus(event.getStatus());             // update status
             repo.save(booking);                         // save back to DB
         }

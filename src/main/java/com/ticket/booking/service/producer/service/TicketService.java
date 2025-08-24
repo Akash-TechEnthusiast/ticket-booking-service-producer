@@ -1,29 +1,31 @@
 package com.ticket.booking.service.producer.service;
 
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ticket.booking.service.producer.entity.OutboxEvent;
 import com.ticket.booking.service.producer.entity.TicketBookedEvent;
 import com.ticket.booking.service.producer.entity.TicketBooking;
+import com.ticket.booking.service.producer.repo.OutboxRepository;
 import com.ticket.booking.service.producer.repo.TicketBookingRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.kafka.support.SendResult;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import java.io.IOException;
+import java.time.LocalDateTime;
 
 
 @Service
 @RequiredArgsConstructor
 public class TicketService {
     private final TicketBookingRepository repo;
+    private final OutboxRepository outboxRepo;
     private final KafkaTemplate<String, TicketBookedEvent> kafka;
 
 
     @Transactional
-    public TicketBooking bookTicket(TicketBooking booking) {
+    public TicketBooking bookTicket(TicketBooking booking) throws IOException {
         booking.setStatus("PENDING");
         if (booking.getPassengerName() == null || booking.getTrainId() == null) {
             throw new IllegalArgumentException("PassengerName and TrainId are required");
@@ -32,45 +34,25 @@ public class TicketService {
 
 
         TicketBookedEvent event = new TicketBookedEvent(
-                saved.getId(), saved.getPassengerName(), saved.getTrainId(), "BOOKED");
+                saved.getId(),
+                saved.getPassengerName(),
+                saved.getTrainId(),
+                "PENDING"
+        );
 
+        // Save event to Outbox instead of sending directly
+        OutboxEvent outbox = OutboxEvent.builder()
+                .topic("ticket.booked")
+                .keyvalue(saved.getId().toString())
+                .payload(new ObjectMapper().writeValueAsString(event))
+                .status("PENDING")
+                .retryCount(0)
+                .createdAt(LocalDateTime.now())
+                .build();
 
-        //kafka.send("ticket.booked", saved.getId().toString(), event);
+        outboxRepo.save(outbox);
 
-
-        CompletableFuture<SendResult<String, TicketBookedEvent>> future =
-                kafka.send("ticket.booked", saved.getId().toString(), event);
-
-        try {
-            // Wait max 5 seconds for Kafka ack
-            SendResult<String, TicketBookedEvent> result =
-                    future.get(5, TimeUnit.SECONDS);
-
-            // ✅ Success case
-            System.out.println("✅ Sent message -> " +
-                    "topic=" + result.getRecordMetadata().topic() +
-                    ", partition=" + result.getRecordMetadata().partition() +
-                    ", offset=" + result.getRecordMetadata().offset());
-
-            saved.setStatus("SENT");
-        } catch (TimeoutException e) {
-            System.err.println("⏰ Timeout: Kafka did not respond in time");
-            saved.setStatus("TIMEOUT");
-        } catch (org.apache.kafka.common.errors.SerializationException e) {
-            System.err.println("⚠️ Serialization error: " + e.getMessage());
-            saved.setStatus("SERIALIZATION_ERROR");
-        } catch (org.apache.kafka.common.errors.UnknownTopicOrPartitionException e) {
-            System.err.println("⚠️ Topic/partition error: " + e.getMessage());
-            saved.setStatus("TOPIC_ERROR");
-        } catch (org.apache.kafka.common.errors.NotLeaderForPartitionException e) {
-            System.err.println("⚠️ Leader not available: " + e.getMessage());
-            saved.setStatus("LEADER_ERROR");
-        } catch (Exception e) {
-            System.err.println("❌ General failure: " + e.getMessage());
-            saved.setStatus("FAILED");
-        }
-
-        return repo.save(saved);
+        return saved;
 
 
     }
