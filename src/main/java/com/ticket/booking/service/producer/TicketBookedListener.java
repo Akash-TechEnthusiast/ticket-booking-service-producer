@@ -23,7 +23,7 @@ public class TicketBookedListener {
         Optional<TicketBooking> ticketbook = repo.findById(event.getBookingId());
         if (ticketbook.isPresent()) {
             TicketBooking booking = ticketbook.get();   // unwrap Optional
-            booking.setStatus("CONFIRMED");             // update status
+            booking.setStatus(event.getStatus());             // update status
             repo.save(booking);                         // save back to DB
         }
 
