@@ -14,7 +14,7 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
-public class OutboxScheduler {
+public class WriteToTopicOutboxScheduler {
 
     private final OutboxRepository outboxRepo;
     private final KafkaTemplate<String, TicketBookedEvent> kafka;

@@ -12,7 +12,7 @@ import java.util.Optional;
 
 @Component
 @RequiredArgsConstructor
-public class TicketBookedListener {
+public class ReadFromTopic {
     // private final ProcessedTicketRepository repo;
     private final OutboxRepository repo;
     private final KafkaTemplate<String, TicketBookedEvent> kafka;
