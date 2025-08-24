@@ -38,6 +38,7 @@ public class OutboxScheduler {
                 event.setRetryCount(event.getRetryCount() + 1);
                 event.setLastAttemptAt(LocalDateTime.now());
 
+                // event.setStatus("ERROR");
                 if (event.getRetryCount() > 3) {
                     event.setStatus("FAILED"); // give up after 3 tries
                 }
