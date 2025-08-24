@@ -42,7 +42,7 @@ Receives booking requests via REST.
 
 Saves booking to DB (PENDING).
 
-Sends event to ticket.booked topic.
+Sends event to ticket.booked topic. using schedualer OutboxScheduler class 
 
 Ticket Processor Service (Consumer + Processor)
 
@@ -51,5 +51,7 @@ Consumes ticket.booked.
 Confirms or rejects tickets (updates status).
 
 Sends result to ticket.confirmed topic.
+
+Again at producer side it will read and update database using TicketBookedListener class it will read data from ticket.confirmed topic and update status in  outbox_event table
 
 Failed processing goes to dlq.ticket topic.
